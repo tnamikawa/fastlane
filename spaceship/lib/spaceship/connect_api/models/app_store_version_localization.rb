@@ -99,16 +99,22 @@ module Spaceship
       def get_app_screenshot_sets(client: nil, filter: {}, includes: "appScreenshots", limit: nil, sort: nil)
         client ||= Spaceship::ConnectAPI
         return Spaceship::ConnectAPI::AppScreenshotSet.all(client: client, app_store_version_localization_id: id, filter: filter, includes: includes, limit: limit, sort: sort)
-      rescue
-        raise Spaceship::AppStoreScreenshotError, @locale
+      rescue => e
+        # エラーの詳細をログに出力
+        puts "Error getting screenshot sets for locale #{@locale}: #{e.message}"
+        puts e.backtrace.first(5).join("\n") if e.backtrace
+        raise Spaceship::AppStoreScreenshotError, "#{@locale}: #{e.message}"
       end
 
       def create_app_screenshot_set(client: nil, attributes: nil)
         client ||= Spaceship::ConnectAPI
         resp = client.post_app_screenshot_set(app_store_version_localization_id: id, attributes: attributes)
         return resp.to_models.first
-      rescue
-        raise Spaceship::AppStoreScreenshotError, @locale
+      rescue => e
+        # エラーの詳細をログに出力
+        puts "Error creating screenshot set for locale #{@locale}: #{e.message}"
+        puts e.backtrace.first(5).join("\n") if e.backtrace
+        raise Spaceship::AppStoreScreenshotError, "#{@locale}: #{e.message}"
       end
     end
   end

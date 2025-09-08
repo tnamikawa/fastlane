@@ -115,12 +115,27 @@ module Deliver
       # Upload screenshots
       worker = FastlaneCore::QueueWorker.new do |job|
         begin
-          UI.verbose("Uploading '#{job.path}'...")
+          # デバッグ情報を追加
+          screenshot_path = job.path
+          device_type = job.app_screenshot_set.screenshot_display_type
+          
+          # ファイルから解像度を取得
+          require 'fastimage'
+          resolution = FastImage.size(screenshot_path)
+          width = resolution ? resolution[0] : 'unknown'
+          height = resolution ? resolution[1] : 'unknown'
+          
+          puts "Uploading screenshot: #{screenshot_path}"
+          puts "Device type: #{device_type}"
+          puts "Resolution: #{width}x#{height}"
+          
+          UI.verbose("Uploading '#{screenshot_path}'...")
           start_time = Time.now
-          job.app_screenshot_set.upload_screenshot(path: job.path, wait_for_processing: false)
-          UI.message("Uploaded '#{job.path}'... (#{Time.now - start_time} secs)")
+          job.app_screenshot_set.upload_screenshot(path: screenshot_path, wait_for_processing: false)
+          UI.message("Uploaded '#{screenshot_path}'... (#{Time.now - start_time} secs)")
         rescue => error
-          UI.error(error)
+          UI.error("Failed to upload screenshot: #{error.message}")
+          UI.error(error.backtrace.first(5).join("\n")) if error.backtrace
         end
       end
 
@@ -145,6 +160,13 @@ module Deliver
         if duplicate
           UI.message("Previous uploaded. Skipping '#{screenshot.path}'...")
         else
+          # デバッグ情報を追加
+          puts "Queuing screenshot upload:"
+          puts "  Locale: #{localization.locale}"
+          puts "  Display type: #{app_screenshot_set.screenshot_display_type}"
+          puts "  Path: #{screenshot.path}"
+          puts "  Device type: #{screenshot.device_type}"
+          
           UI.verbose("Queued upload screenshot job for #{localization.locale} #{app_screenshot_set.screenshot_display_type} #{screenshot.path}")
           worker.enqueue(UploadScreenshotJob.new(app_screenshot_set, screenshot.path))
           number_of_screenshots_per_set[app_screenshot_set] += 1
