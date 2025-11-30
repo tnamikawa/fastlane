@@ -165,7 +165,7 @@ module Deliver
           puts "  Locale: #{localization.locale}"
           puts "  Display type: #{app_screenshot_set.screenshot_display_type}"
           puts "  Path: #{screenshot.path}"
-          puts "  Device type: #{screenshot.device_type}"
+          puts "  Display type: #{screenshot.display_type}"
           
           UI.verbose("Queued upload screenshot job for #{localization.locale} #{app_screenshot_set.screenshot_display_type} #{screenshot.path}")
           worker.enqueue(UploadScreenshotJob.new(app_screenshot_set, screenshot.path))
