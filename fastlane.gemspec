@@ -113,7 +113,7 @@ Gem::Specification.new do |spec|
 
   # As Ruby evolves, some stdlib modules are no longer bundled with Ruby and instead standard gems.
   spec.add_dependency('abbrev', '~> 0.1.2') # 3.4 - workaround for highline as can't upgrade to 3.x yet
-  spec.add_dependency('base64', '~> 0.2.0') # 3.4 - workaround for CFPropertyList as can't upgrade to 4.x yet
+  spec.add_dependency('base64', '>= 0.2.0', '< 1.0') # 3.4 - workaround for CFPropertyList as can't upgrade to 4.x yet
   spec.add_dependency('csv', '~> 3.3') # 3.4 - workaround for sinatra as can't upgrade to 4.x yet
   spec.add_dependency('mutex_m', '~> 0.3.0') # 3.4 - workaround for httpclient as can't upgrade to 2.9 yet
   spec.add_dependency('nkf', '~> 0.2.0') # 3.4 - workaround for CFPropertyList as can't upgrade to 4.x yet
