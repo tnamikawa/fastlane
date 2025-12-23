@@ -21,7 +21,10 @@
       "Bash(tree:*)",
       "Bash(touch:*)",
       "Bash(done)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git merge:*)"
     ],
     "deny": []
   },
