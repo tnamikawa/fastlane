@@ -117,27 +117,12 @@ module Deliver
       # Upload screenshots
       worker = FastlaneCore::QueueWorker.new do |job|
         begin
-          # デバッグ情報を追加
-          screenshot_path = job.path
-          device_type = job.app_screenshot_set.screenshot_display_type
-          
-          # ファイルから解像度を取得
-          require 'fastimage'
-          resolution = FastImage.size(screenshot_path)
-          width = resolution ? resolution[0] : 'unknown'
-          height = resolution ? resolution[1] : 'unknown'
-          
-          puts "Uploading screenshot: #{screenshot_path}"
-          puts "Device type: #{device_type}"
-          puts "Resolution: #{width}x#{height}"
-          
-          UI.verbose("Uploading '#{screenshot_path}'...")
+          UI.verbose("Uploading '#{job.path}'...")
           start_time = Time.now
-          job.app_screenshot_set.upload_screenshot(path: screenshot_path, wait_for_processing: false)
-          UI.message("Uploaded '#{screenshot_path}'... (#{Time.now - start_time} secs)")
+          job.app_screenshot_set.upload_screenshot(path: job.path, wait_for_processing: false)
+          UI.message("Uploaded '#{job.path}'... (#{Time.now - start_time} secs)")
         rescue => error
-          UI.error("Failed to upload screenshot: #{error.message}")
-          UI.error(error.backtrace.first(5).join("\n")) if error.backtrace
+          UI.error("Failed to upload screenshot #{job.path}: #{error.message}")
         end
       end
 
