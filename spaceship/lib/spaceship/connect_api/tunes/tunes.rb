@@ -1287,7 +1287,7 @@ module Spaceship
 
         def get_in_app_purchases(app_id:, filter: {}, includes: nil, limit: nil, sort: nil)
           params = tunes_request_client.build_params(filter: filter, includes: includes, limit: limit, sort: sort)
-          tunes_request_client.get("#{Version::V2}/apps/#{app_id}/inAppPurchases", params)
+          tunes_request_client.get("#{Version::V1}/apps/#{app_id}/inAppPurchasesV2", params)
         end
 
         def get_in_app_purchase(in_app_purchase_id:, includes: nil)
@@ -1310,7 +1310,7 @@ module Spaceship
               type: "inAppPurchaseLocalizations",
               attributes: attributes,
               relationships: {
-                inAppPurchase: {
+                inAppPurchaseV2: {
                   data: {
                     type: "inAppPurchases",
                     id: in_app_purchase_id
