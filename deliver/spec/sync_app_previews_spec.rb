@@ -260,7 +260,7 @@ describe Deliver::SyncAppPreviews do
 
     existing_sets = {
       locale => [
-        double("ExistingSet", preview_type: device, app_previews: [double("ExistingPreview", source_file_checksum: checksum, file_name: "#{device}_1.mp4")])
+        double("ExistingSet", preview_type: device, app_previews: [double("ExistingPreview", source_file_checksum: checksum, file_name: "#{device}_1.mp4", complete?: true, video_url: "https://example.com/video.mp4")])
       ]
     }
 
