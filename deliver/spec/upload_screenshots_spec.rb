@@ -163,7 +163,7 @@ describe Deliver::UploadScreenshots do
       it 'should skip that screenshot' do
         app_screenshot = double('Spaceship::ConnectAPI::AppScreenshot',
                                 source_file_checksum: 'checksum',
-                                file_name: 'screenshot.png',
+                                file_name: 'screenshot',
                                 complete?: true)
         app_screenshot_set = double('Spaceship::ConnectAPI::AppScreenshotSet',
                                     screenshot_display_type: Spaceship::ConnectAPI::AppScreenshotSet::DisplayType::APP_IPHONE_55,
