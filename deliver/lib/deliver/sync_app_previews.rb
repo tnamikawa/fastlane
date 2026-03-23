@@ -117,13 +117,17 @@ module Deliver
           local_filename = File.basename(video_path)
 
           existing_preview = (preview_set.app_previews || []).find { |preview| preview.file_name == local_filename }
+          # ファイル名で見つからない場合、チェックサムでも探す
+          existing_preview ||= (preview_set.app_previews || []).find { |preview| preview.source_file_checksum == local_checksum }
 
           if existing_preview
-            if existing_preview.complete? && existing_preview.source_file_checksum == local_checksum
-              UI.message("[#{locale}] Preview '#{local_filename}' already uploaded (matching checksum). Skipping upload.")
+            if existing_preview.complete? && existing_preview.video_url && existing_preview.source_file_checksum == local_checksum
+              UI.message("[#{locale}] Preview '#{local_filename}' already uploaded (matching checksum, video_url present). Skipping upload.")
               next
             else
-              UI.message("[#{locale}] Preview '#{local_filename}' has changed or is incomplete. Deleting old preview and re-uploading...")
+              state = (existing_preview.asset_delivery_state || {})["state"] || "unknown"
+              has_video = existing_preview.video_url ? "yes" : "no"
+              UI.message("[#{locale}] Preview '#{local_filename}' is not functional (state=#{state}, video_url=#{has_video}, checksum_match=#{existing_preview.source_file_checksum == local_checksum}). Deleting and re-uploading...")
               existing_preview.delete!
             end
           end
