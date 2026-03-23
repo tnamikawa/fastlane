@@ -156,19 +156,19 @@ module Deliver
         end
 
         checksum = UploadScreenshots.calculate_checksum(screenshot.path)
-        duplicate = (app_screenshot_set.app_screenshots || []).any? { |s| s.source_file_checksum == checksum }
+        local_filename = File.basename(screenshot.path)
 
-        # Enqueue uploading job if it's not duplicated otherwise screenshot will be skipped
-        if duplicate
-          UI.message("Previous uploaded. Skipping '#{screenshot.path}'...")
+        existing_screenshot = (app_screenshot_set.app_screenshots || []).find { |s| s.file_name == local_filename }
+
+        if existing_screenshot
+          if existing_screenshot.complete? && existing_screenshot.source_file_checksum == checksum
+            UI.message("Already uploaded. Skipping '#{screenshot.path}'...")
+          else
+            UI.message("Screenshot '#{local_filename}' has changed or is incomplete. Deleting old screenshot and re-uploading...")
+            existing_screenshot.delete!
+            worker.enqueue(UploadScreenshotJob.new(app_screenshot_set, screenshot.path))
+          end
         else
-          # デバッグ情報を追加
-          puts "Queuing screenshot upload:"
-          puts "  Locale: #{localization.locale}"
-          puts "  Display type: #{app_screenshot_set.screenshot_display_type}"
-          puts "  Path: #{screenshot.path}"
-          puts "  Display type: #{screenshot.display_type}"
-          
           UI.verbose("Queued upload screenshot job for #{localization.locale} #{app_screenshot_set.screenshot_display_type} #{screenshot.path}")
           worker.enqueue(UploadScreenshotJob.new(app_screenshot_set, screenshot.path))
           number_of_screenshots_per_set[app_screenshot_set] += 1

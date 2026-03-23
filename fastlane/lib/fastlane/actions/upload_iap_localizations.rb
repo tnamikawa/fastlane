@@ -104,7 +104,7 @@ module Fastlane
         [
           "Upload localized name and description for In-App Purchases.",
           "Metadata is read from the folder structure:",
-          "  {metadata_path}/{product_id}/{locale}/name.txt",
+          "  {metadata_path}/{product_id}/{locale}/name.txt (default: fastlane/metadata_iap/)",
           "  {metadata_path}/{product_id}/{locale}/description.txt"
         ].join("\n")
       end
@@ -124,7 +124,7 @@ module Fastlane
             env_name: "UPLOAD_IAP_LOCALIZATIONS_METADATA_PATH",
             description: "Path to the IAP metadata directory",
             type: String,
-            default_value: File.join("fastlane", "metadata", "iap")
+            default_value: File.join("fastlane", "metadata_iap")
           ),
           FastlaneCore::ConfigItem.new(
             key: :username,

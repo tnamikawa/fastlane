@@ -113,10 +113,19 @@ module Deliver
         end
 
         video_paths.each do |video_path|
-          already_exist = (preview_set.app_previews || []).any? { |preview| preview.source_file_checksum == Digest::MD5.file(video_path).hexdigest }
-          if already_exist
-            UI.message("[#{locale}] Preview '#{File.basename(video_path)}' already uploaded (matching checksum). Skipping upload.")
-            next
+          local_checksum = Digest::MD5.file(video_path).hexdigest
+          local_filename = File.basename(video_path)
+
+          existing_preview = (preview_set.app_previews || []).find { |preview| preview.file_name == local_filename }
+
+          if existing_preview
+            if existing_preview.complete? && existing_preview.source_file_checksum == local_checksum
+              UI.message("[#{locale}] Preview '#{local_filename}' already uploaded (matching checksum). Skipping upload.")
+              next
+            else
+              UI.message("[#{locale}] Preview '#{local_filename}' has changed or is incomplete. Deleting old preview and re-uploading...")
+              existing_preview.delete!
+            end
           end
 
           jobs << UploadPreviewJob.new(localization, preview_set, video_path, @frame_time_code)
