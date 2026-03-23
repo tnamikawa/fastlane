@@ -71,6 +71,9 @@ require 'spaceship/connect_api/models/reset_ratings_request'
 require 'spaceship/connect_api/models/sandbox_tester'
 require 'spaceship/connect_api/models/territory'
 
+require 'spaceship/connect_api/models/in_app_purchase'
+require 'spaceship/connect_api/models/in_app_purchase_localization'
+
 require 'spaceship/connect_api/models/resolution_center_message'
 require 'spaceship/connect_api/models/resolution_center_thread'
 require 'spaceship/connect_api/models/review_rejection'

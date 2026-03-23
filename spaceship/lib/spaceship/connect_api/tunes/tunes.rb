@@ -1280,6 +1280,63 @@ module Spaceship
         def delete_webhook(webhook_id:)
           tunes_request_client.delete("#{Version::V1}/webhooks/#{webhook_id}")
         end
+
+        #
+        # inAppPurchases
+        #
+
+        def get_in_app_purchases(app_id:, filter: {}, includes: nil, limit: nil, sort: nil)
+          params = tunes_request_client.build_params(filter: filter, includes: includes, limit: limit, sort: sort)
+          tunes_request_client.get("#{Version::V2}/apps/#{app_id}/inAppPurchases", params)
+        end
+
+        def get_in_app_purchase(in_app_purchase_id:, includes: nil)
+          params = tunes_request_client.build_params(filter: nil, includes: includes, limit: nil, sort: nil)
+          tunes_request_client.get("#{Version::V2}/inAppPurchases/#{in_app_purchase_id}", params)
+        end
+
+        #
+        # inAppPurchaseLocalizations
+        #
+
+        def get_in_app_purchase_localizations(in_app_purchase_id:, filter: {}, includes: nil, limit: nil, sort: nil)
+          params = tunes_request_client.build_params(filter: filter, includes: includes, limit: limit, sort: sort)
+          tunes_request_client.get("#{Version::V2}/inAppPurchases/#{in_app_purchase_id}/inAppPurchaseLocalizations", params)
+        end
+
+        def post_in_app_purchase_localization(in_app_purchase_id:, attributes: {})
+          body = {
+            data: {
+              type: "inAppPurchaseLocalizations",
+              attributes: attributes,
+              relationships: {
+                inAppPurchase: {
+                  data: {
+                    type: "inAppPurchases",
+                    id: in_app_purchase_id
+                  }
+                }
+              }
+            }
+          }
+          tunes_request_client.post("#{Version::V1}/inAppPurchaseLocalizations", body)
+        end
+
+        def patch_in_app_purchase_localization(in_app_purchase_localization_id:, attributes: {})
+          body = {
+            data: {
+              type: "inAppPurchaseLocalizations",
+              id: in_app_purchase_localization_id,
+              attributes: attributes
+            }
+          }
+          tunes_request_client.patch("#{Version::V1}/inAppPurchaseLocalizations/#{in_app_purchase_localization_id}", body)
+        end
+
+        def delete_in_app_purchase_localization(in_app_purchase_localization_id:)
+          params = tunes_request_client.build_params(filter: nil, includes: nil, limit: nil, sort: nil)
+          tunes_request_client.delete("#{Version::V1}/inAppPurchaseLocalizations/#{in_app_purchase_localization_id}", params)
+        end
       end
     end
   end
