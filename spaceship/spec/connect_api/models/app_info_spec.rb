@@ -19,11 +19,11 @@ describe Spaceship::ConnectAPI::AppInfo do
         }
 
         expect(Spaceship::ConnectAPI).to receive(:post_app_info_localization)
-          .with(app_info_id: 'id', attributes: { locale: 'ja-JP' })
+          .with(app_info_id: 'id', attributes: { locale: 'ja-JP', name: 'App name' })
           .and_raise(Spaceship::UnexpectedResponse.new("Cannot add localization due to app name.", error_body))
 
         expect do
-          app_info.create_app_info_localization(attributes: { locale: 'ja-JP' })
+          app_info.create_app_info_localization(attributes: { locale: 'ja-JP', name: 'App name' })
         end.to raise_error(Spaceship::AppStoreLocalizationError) { |error|
           expect(error.message).to include("Failed to create app info localization for requested locale: ja-JP")
           expect(error.message).to include("Title: The provided entity includes an attribute with an invalid value")

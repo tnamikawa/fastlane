@@ -549,8 +549,14 @@ module Deliver
         Helper.show_loading_indicator("Activating info #{lng_text} #{locales_to_enable.join(', ')}...")
 
         locales_to_enable.each do |locale|
+          name = localized_app_info_name_for_locale(locale)
+          unless name
+            UI.user_error!("Cannot create app info localization for requested locale '#{locale}' without a localized app name")
+          end
+
           app_info.create_app_info_localization(attributes: {
-            locale: locale
+            locale: locale,
+            name: name
           })
         end
 
@@ -561,6 +567,16 @@ module Deliver
       end
 
       return localizations
+    end
+
+    def localized_app_info_name_for_locale(locale)
+      name = options[:name]
+      return nil unless name.kind_of?(Hash)
+
+      value = name[locale]
+      return nil if value.to_s.strip.empty?
+
+      value.to_s.strip
     end
 
     # Finding languages to enable

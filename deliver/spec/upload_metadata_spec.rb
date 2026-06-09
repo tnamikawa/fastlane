@@ -536,7 +536,7 @@ describe Deliver::UploadMetadata do
         expect(uploader).to receive(:fetch_edit_app_info).and_return(app_info)
         expect(app_info).to receive(:get_app_info_localizations).and_return([app_info_localization_en])
         expect(app_info).to receive(:get_app_info_localizations).and_return([app_info_localization_en])
-        expect(app_info).to receive(:create_app_info_localization).with(attributes: { locale: "pl" })
+        expect(app_info).to receive(:create_app_info_localization).with(attributes: { locale: "pl", name: "RH()32rihbfis" })
         expect(app_info).to receive(:get_app_info_localizations).and_return([app_info_localization_en, app_info_localization_pl])
 
         expect(app).to receive(:get_edit_app_store_version).and_return(version)
@@ -550,6 +550,32 @@ describe Deliver::UploadMetadata do
         expect(app_info).to receive(:update_categories).with(category_id_map: {})
 
         uploader.upload
+      end
+
+      it "fails before creating app info localizations when the localized app name is missing" do
+        options[:platform] = "ios"
+        options[:metadata_path] = metadata_path
+        options[:subtitle] = { "pl" => "Localized subtitle" }
+        options[:version_check_wait_retry_limit] = 5
+
+        allow(Deliver).to receive(:cache).and_return({ app: app })
+
+        expect(app).to receive(:get_edit_app_store_version).and_return(version)
+        expect(version).to receive(:get_app_store_version_localizations).and_return([version_localization_en])
+        expect(version).not_to receive(:create_app_store_version_localization)
+
+        expect(uploader).to receive(:fetch_edit_app_info).and_return(app_info)
+        expect(app_info).to receive(:get_app_info_localizations).and_return([app_info_localization_en])
+        expect(app_info).to receive(:get_app_info_localizations).and_return([app_info_localization_en])
+        expect(app_info).not_to receive(:create_app_info_localization)
+
+        expect(FastlaneCore::UI).to receive(:user_error!)
+          .with("Cannot create app info localization for requested locale 'pl' without a localized app name")
+          .and_call_original
+
+        expect do
+          uploader.upload
+        end.to raise_error(FastlaneCore::Interface::FastlaneError)
       end
     end
 

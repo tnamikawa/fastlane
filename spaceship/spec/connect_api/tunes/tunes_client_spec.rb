@@ -63,6 +63,42 @@ describe Spaceship::ConnectAPI::Tunes::Client do
       end
     end
 
+    describe "appInfoLocalizations" do
+      context 'post_app_info_localization' do
+        let(:path) { "v1/appInfoLocalizations" }
+        let(:app_info_id) { "123" }
+        let(:attributes) do
+          {
+            locale: "pl",
+            name: "RH()32rihbfis"
+          }
+        end
+        let(:body) do
+          {
+            data: {
+              type: "appInfoLocalizations",
+              attributes: attributes,
+              relationships: {
+                appInfo: {
+                  data: {
+                    type: "appInfos",
+                    id: app_info_id
+                  }
+                }
+              }
+            }
+          }
+        end
+
+        it 'succeeds' do
+          req_mock = test_request_body(path, body)
+
+          expect(client).to receive(:request).with(:post).and_yield(req_mock).and_return(req_mock)
+          client.post_app_info_localization(app_info_id: app_info_id, attributes: attributes)
+        end
+      end
+    end
+
     describe "appStoreVersionReleaseRequests" do
       context 'post_app_store_version_release_request' do
         let(:path) { "v1/appStoreVersionReleaseRequests" }
