@@ -98,11 +98,12 @@ module Deliver
 
       platform = Spaceship::ConnectAPI::Platform.map(options[:platform])
 
-      enabled_languages = detect_languages
+      enabled_version_languages = detect_languages(localized_values_keys: LOCALISED_VERSION_VALUES.keys)
+      enabled_info_languages = detect_languages(localized_values_keys: LOCALISED_APP_VALUES.keys)
 
-      app_store_version_localizations = verify_available_version_languages!(app, enabled_languages) unless options[:edit_live]
+      app_store_version_localizations = verify_available_version_languages!(app, enabled_version_languages) unless options[:edit_live]
       app_info = fetch_edit_app_info(app)
-      app_info_localizations = verify_available_info_languages!(app, app_info, enabled_languages) unless options[:edit_live] || !updating_localized_app_info?(app, app_info)
+      app_info_localizations = verify_available_info_languages!(app, app_info, enabled_info_languages) unless options[:edit_live] || !updating_localized_app_info?(app, app_info)
 
       if options[:edit_live]
         # not all values are editable when using live_version
@@ -415,12 +416,12 @@ module Deliver
       end
     end
 
-    def detect_languages
+    def detect_languages(localized_values_keys: LOCALISED_VERSION_VALUES.keys + LOCALISED_APP_VALUES.keys)
       # Build a complete list of the required languages
-      enabled_languages = options[:languages] || []
+      enabled_languages = (options[:languages] || []).dup
 
       # Get all languages used in existing settings
-      (LOCALISED_VERSION_VALUES.keys + LOCALISED_APP_VALUES.keys).each do |key|
+      localized_values_keys.each do |key|
         current = options[key]
         next unless current && current.kind_of?(Hash)
         current.each do |language, value|
@@ -431,6 +432,8 @@ module Deliver
       # Check folder list (an empty folder signifies a language is required)
       ignore_validation = options[:ignore_language_directory_validation]
       Loader.language_folders(options[:metadata_path], ignore_validation).each do |lang_folder|
+        next unless metadata_folder_matches_localized_values?(lang_folder, localized_values_keys)
+
         enabled_languages << lang_folder.basename unless enabled_languages.include?(lang_folder.basename)
       end
 
@@ -503,7 +506,7 @@ module Deliver
           next if strip_value.empty?
 
           app_info_locale = localizations.find { |l| l.locale == language }
-          next if app_info_locale.nil?
+          return true if app_info_locale.nil?
 
           begin
             current_value = app_info_locale.public_send(localized_key.to_sym)
@@ -517,6 +520,15 @@ module Deliver
 
       UI.message('No changes to localized App Info detected. Skipping upload.')
       return false
+    end
+
+    def metadata_folder_matches_localized_values?(lang_folder, localized_values_keys)
+      entries = Dir.children(lang_folder.path).reject { |entry| entry.start_with?(".") }
+      return true if entries.empty?
+
+      localized_values_keys.any? do |key|
+        File.file?(File.join(lang_folder.path, "#{key}.txt"))
+      end
     end
 
     # Finding languages to enable

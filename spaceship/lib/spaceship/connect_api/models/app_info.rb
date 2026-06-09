@@ -125,7 +125,7 @@ module Spaceship
         return resp.to_models.first
       rescue => error
         locale = attributes && (attributes[:locale] || attributes["locale"])
-        context = "Failed to create localization for requested locale: #{locale || 'unknown'}"
+        context = "Failed to create app info localization for requested locale: #{locale || 'unknown'}"
         raise Spaceship::AppStoreLocalizationError.new(nil, error, include_locale: false, context: context)
       end
 

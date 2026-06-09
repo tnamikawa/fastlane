@@ -509,6 +509,50 @@ describe Deliver::UploadMetadata do
       end
     end
 
+    context "#upload with split localized language sets" do
+      let(:app_info_localization_pl) do
+        double('app_info_localization_pl',
+               locale: 'pl')
+      end
+
+      it "does not create app store version localizations for app info-only languages" do
+        options[:platform] = "ios"
+        options[:metadata_path] = metadata_path
+        options[:name] = { "pl" => "RH()32rihbfis" }
+        options[:version_check_wait_retry_limit] = 5
+
+        allow(Deliver).to receive(:cache).and_return({ app: app })
+
+        allow(uploader).to receive(:review_information)
+        allow(uploader).to receive(:review_attachment_file)
+        allow(uploader).to receive(:app_rating)
+
+        expect(app).to receive(:id).and_return(id)
+
+        expect(app).to receive(:get_edit_app_store_version).and_return(version)
+        expect(version).to receive(:get_app_store_version_localizations).and_return([version_localization_en])
+        expect(version).not_to receive(:create_app_store_version_localization)
+
+        expect(uploader).to receive(:fetch_edit_app_info).and_return(app_info)
+        expect(app_info).to receive(:get_app_info_localizations).and_return([app_info_localization_en])
+        expect(app_info).to receive(:get_app_info_localizations).and_return([app_info_localization_en])
+        expect(app_info).to receive(:create_app_info_localization).with(attributes: { locale: "pl" })
+        expect(app_info).to receive(:get_app_info_localizations).and_return([app_info_localization_en, app_info_localization_pl])
+
+        expect(app).to receive(:get_edit_app_store_version).and_return(version)
+        expect(Spaceship::ConnectAPI).to receive(:get_app_store_versions).and_return(app_store_versions)
+        expect(version).to receive(:update).with(attributes: {})
+
+        expect(app_info_localization_pl).to receive(:update).with(attributes: {
+          "name" => options[:name]["pl"]
+        })
+
+        expect(app_info).to receive(:update_categories).with(category_id_map: {})
+
+        uploader.upload
+      end
+    end
+
     context "fail when not allowed to update" do
       let(:live_app_info) { double('app_info') }
       let(:app_info) { nil }
@@ -614,6 +658,48 @@ describe Deliver::UploadMetadata do
         languages = uploader.detect_languages
 
         expect(languages.sort).to eql(['default', 'es-MX'])
+      end
+    end
+
+    context "detected languages by localized value kind" do
+      it "separates version languages from app info languages in config options" do
+        options[:languages] = []
+        options[:description] = { 'ja-JP' => 'App description' }
+        options[:name] = { 'pl' => 'App name' }
+
+        uploader.load_from_filesystem
+
+        version_languages = uploader.detect_languages(localized_values_keys: Deliver::UploadMetadata::LOCALISED_VERSION_VALUES.keys)
+        info_languages = uploader.detect_languages(localized_values_keys: Deliver::UploadMetadata::LOCALISED_APP_VALUES.keys)
+
+        expect(version_languages).to eql(['ja-JP'])
+        expect(info_languages).to eql(['pl'])
+      end
+
+      it "separates version languages from app info languages in metadata folders" do
+        options[:languages] = []
+
+        create_filesystem_language('ja')
+        create_metadata(
+          File.join(tmpdir, 'ja', "#{Deliver::UploadMetadata::LOCALISED_VERSION_VALUES[:description]}.txt"),
+          'App description'
+        )
+
+        create_filesystem_language('pl')
+        create_metadata(
+          File.join(tmpdir, 'pl', "#{Deliver::UploadMetadata::LOCALISED_APP_VALUES[:name]}.txt"),
+          'App name'
+        )
+
+        create_filesystem_language('ro')
+
+        uploader.load_from_filesystem
+
+        version_languages = uploader.detect_languages(localized_values_keys: Deliver::UploadMetadata::LOCALISED_VERSION_VALUES.keys)
+        info_languages = uploader.detect_languages(localized_values_keys: Deliver::UploadMetadata::LOCALISED_APP_VALUES.keys)
+
+        expect(version_languages.sort).to eql(['ja', 'ro'])
+        expect(info_languages.sort).to eql(['pl', 'ro'])
       end
     end
 

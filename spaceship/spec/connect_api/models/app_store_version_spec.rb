@@ -59,7 +59,7 @@ describe Spaceship::ConnectAPI::AppStoreVersion do
         expect do
           app_store_version.create_app_store_version_localization(attributes: { locale: 'ja-JP' })
         end.to raise_error(Spaceship::AppStoreLocalizationError) { |error|
-          expect(error.message).to include("Failed to create localization for requested locale: ja-JP")
+          expect(error.message).to include("Failed to create app store version localization for requested locale: ja-JP")
           expect(error.message).to include("Title: The provided entity includes an attribute with an invalid value")
           expect(error.message).to include("Detail: The app name is already in use.")
           expect(error.message).to include("Source: /data/attributes/name")
