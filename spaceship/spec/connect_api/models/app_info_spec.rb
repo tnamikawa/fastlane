@@ -10,7 +10,10 @@ describe Spaceship::ConnectAPI::AppInfo do
           "errors" => [
             {
               "title" => "The provided entity includes an attribute with an invalid value",
-              "detail" => "The app name is already in use."
+              "detail" => "The app name is already in use.",
+              "source" => {
+                "pointer" => "/data/attributes/name"
+              }
             }
           ]
         }
@@ -22,9 +25,11 @@ describe Spaceship::ConnectAPI::AppInfo do
         expect do
           app_info.create_app_info_localization(attributes: { locale: 'ja-JP' })
         end.to raise_error(Spaceship::AppStoreLocalizationError) { |error|
+          expect(error.message).to include("Failed to create localization for requested locale: ja-JP")
           expect(error.message).to include("Title: The provided entity includes an attribute with an invalid value")
           expect(error.message).to include("Detail: The app name is already in use.")
-          expect(error.message).not_to include("locale: ja-JP")
+          expect(error.message).to include("Source: /data/attributes/name")
+          expect(error.message).not_to include("An exception has occurred for locale: ja-JP")
         }
       end
     end

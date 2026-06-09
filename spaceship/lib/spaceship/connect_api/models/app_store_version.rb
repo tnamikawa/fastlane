@@ -162,7 +162,9 @@ module Spaceship
         resp = client.post_app_store_version_localization(app_store_version_id: id, attributes: attributes)
         return resp.to_models.first
       rescue => error
-        raise Spaceship::AppStoreLocalizationError.new(nil, error, include_locale: false)
+        locale = attributes && (attributes[:locale] || attributes["locale"])
+        context = "Failed to create localization for requested locale: #{locale || 'unknown'}"
+        raise Spaceship::AppStoreLocalizationError.new(nil, error, include_locale: false, context: context)
       end
 
       def get_app_store_version_localizations(client: nil, filter: {}, includes: nil, limit: nil, sort: nil)

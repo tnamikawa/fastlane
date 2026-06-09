@@ -118,11 +118,13 @@ module Spaceship
 
   # Base class for errors coming from App Store Connect locale changes
   class AppStoreLocaleError < BasicPreferredInfoError
-    def initialize(locale, error, include_locale: true)
+    def initialize(locale, error, include_locale: true, context: nil)
       error_message = app_store_connect_error_message(error)
       locale_str = locale || "unknown"
       @message = if include_locale
                    "An exception has occurred for locale: #{locale_str}.\nError: #{error_message}"
+                 elsif context
+                   "#{context}\n#{error_message}"
                  else
                    error_message
                  end
@@ -145,7 +147,12 @@ module Spaceship
         formatted_errors = apple_errors.map do |apple_error|
           title = apple_error["title"]
           detail = apple_error["detail"]
-          [("Title: #{title}" if title), ("Detail: #{detail}" if detail)].compact.join("\n")
+          source_pointer = apple_error.dig("source", "pointer")
+          [
+            ("Title: #{title}" if title),
+            ("Detail: #{detail}" if detail),
+            ("Source: #{source_pointer}" if source_pointer)
+          ].compact.join("\n")
         end.reject(&:empty?)
 
         return formatted_errors.join("\n") unless formatted_errors.empty?

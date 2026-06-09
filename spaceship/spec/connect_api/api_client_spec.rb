@@ -143,7 +143,10 @@ describe Spaceship::ConnectAPI::APIClient do
         "errors" => [
           {
             "title" => "Some title",
-            "detail" => "some detail"
+            "detail" => "some detail",
+            "source" => {
+              "pointer" => "/data/attributes/name"
+            }
           }
         ]
       }
@@ -152,7 +155,7 @@ describe Spaceship::ConnectAPI::APIClient do
       expect do
         client.get('')
       end.to raise_error(Spaceship::UnexpectedResponse) { |error|
-        expect(error.message).to include("Some title - some detail")
+        expect(error.message).to include("Some title - some detail - /data/attributes/name")
         expect(error.error_body).to eq(body_hash)
       }
     end
