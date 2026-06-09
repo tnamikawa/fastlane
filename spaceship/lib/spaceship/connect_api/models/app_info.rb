@@ -123,6 +123,9 @@ module Spaceship
         client ||= Spaceship::ConnectAPI
         resp = client.post_app_info_localization(app_info_id: id, attributes: attributes)
         return resp.to_models.first
+      rescue => error
+        locale = attributes && (attributes[:locale] || attributes["locale"])
+        raise Spaceship::AppStoreLocalizationError.new(locale, error)
       end
 
       def get_app_info_localizations(client: nil, filter: {}, includes: nil, limit: nil, sort: nil)

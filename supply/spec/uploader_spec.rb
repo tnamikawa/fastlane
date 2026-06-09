@@ -258,6 +258,35 @@ describe Supply do
       it_behaves_like 'run supply to upload metadata', version_codes: [3], with_explicit_changelogs: false
     end
 
+    describe '#upload_changelogs' do
+      let(:uploader) { Supply::Uploader.new }
+      let(:client) { double('client') }
+      let(:release) { double('release') }
+      let(:track) { double('track') }
+      let(:release_notes) do
+        [
+          AndroidPublisher::LocalizedText.new(language: 'en-US', text: 'English changelog'),
+          AndroidPublisher::LocalizedText.new(language: 'ja-JP', text: 'Japanese changelog')
+        ]
+      end
+
+      before do
+        allow(Supply::Client).to receive(:make_from_config).and_return(client)
+      end
+
+      it 'raises changelog upload errors with the requested languages' do
+        expect(release).to receive(:release_notes=).with(release_notes)
+        expect(client).to receive(:upload_changelogs).with(track, 'production').and_raise('Google API error')
+        expect(FastlaneCore::UI).to receive(:user_error!)
+          .with("Failed to upload changelogs for languages 'en-US, ja-JP' on track 'production': Google API error")
+          .and_raise('wrapped error')
+
+        expect do
+          uploader.upload_changelogs(release_notes, release, track, 'production')
+        end.to raise_error('wrapped error')
+      end
+    end
+
     context 'when sync_image_upload is set' do
       let(:client) { double('client') }
       let(:language) { 'pt-BR' }

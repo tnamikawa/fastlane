@@ -35,5 +35,19 @@ describe Spaceship::ConnectAPI::AppStoreVersion do
         app_store_version.create_app_store_review_detail(attributes: attribute_attributes)
       end
     end
+
+    describe "#create_app_store_version_localization" do
+      let(:app_store_version) { Spaceship::ConnectAPI::AppStoreVersion.new('id', {}) }
+
+      it "raises localization errors with the requested locale" do
+        expect(Spaceship::ConnectAPI).to receive(:post_app_store_version_localization)
+          .with(app_store_version_id: 'id', attributes: { locale: 'ja-JP' })
+          .and_raise(Spaceship::UnexpectedResponse.new("Cannot add localization due to app name."))
+
+        expect do
+          app_store_version.create_app_store_version_localization(attributes: { locale: 'ja-JP' })
+        end.to raise_error(Spaceship::AppStoreLocalizationError, /locale: ja-JP/)
+      end
+    end
   end
 end

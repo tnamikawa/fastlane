@@ -260,6 +260,9 @@ module Supply
     def upload_changelogs(release_notes, release, track, track_name)
       release.release_notes = release_notes
       client.upload_changelogs(track, track_name)
+    rescue => error
+      languages = release_notes.map(&:language).compact.join(', ')
+      UI.user_error!("Failed to upload changelogs for languages '#{languages}' on track '#{track_name}': #{error}")
     end
 
     def upload_metadata(language, listing)
