@@ -100,12 +100,7 @@ describe FastlaneCore do
     end
 
     def shell_provider_id_command(jwt: nil)
-      # Ruby doesn't escape "+" with Shellwords.escape from 2.7 https://bugs.ruby-lang.org/issues/14429
-      escaped_password = if RUBY_VERSION >= "2.7.0"
-                           "'\\!\\>\\ p@\\$s_-+\\=w'\"\\'\"'o\\%rd\\\"\\&\\#\\*\\<'"
-                         else
-                           "'\\!\\>\\ p@\\$s_-\\+\\=w'\"\\'\"'o\\%rd\\\"\\&\\#\\*\\<'"
-                         end
+      escaped_password = "'\\!\\>\\ p@\\$s_-+\\=w'\"\\'\"'o\\%rd\\\"\\&\\#\\*\\<'"
       [
         '"' + FastlaneCore::Helper.transporter_path + '"',
         "-m provider",
@@ -1567,6 +1562,13 @@ describe FastlaneCore do
         include_examples 'build_credential_params'
       end
 
+      context "with individual api key (no issuer_id)" do
+        let(:api_key_arg) { { key_id: "TESTAPIK2HW", issuer_id: nil } }
+        let(:expected) { "--apiKey TESTAPIK2HW --apiIssuer TESTAPIK2HW --api-key-subject user" }
+
+        include_examples 'build_credential_params'
+      end
+
     end
 
     describe FastlaneCore::ShellScriptTransporterExecutor do
@@ -1661,5 +1663,32 @@ describe FastlaneCore do
       end
     end
 
+  end
+
+  describe "#prepare writes the .p8 key file" do
+    let(:pem) { "-----BEGIN PRIVATE KEY-----\nMIGTAgEAMBMGByqG\n-----END PRIVATE KEY-----\n" }
+    let(:transporter) { FastlaneCore::AltoolTransporterExecutor.new }
+
+    def written_key(api_key)
+      prepared = transporter.prepare(original_api_key: api_key)
+      File.read(File.join(prepared[:key_dir], "AuthKey_#{prepared[:key_id]}.p8"))
+    ensure
+      FileUtils.remove_entry(prepared[:key_dir]) if prepared && Dir.exist?(prepared[:key_dir])
+    end
+
+    it "decodes the key when is_key_content_base64 is true" do
+      key = api_key.merge(key: Base64.strict_encode64(pem), is_key_content_base64: true)
+      expect(written_key(key)).to eq(pem)
+    end
+
+    it "writes the key verbatim when is_key_content_base64 is false" do
+      key = api_key.merge(key: pem, is_key_content_base64: false)
+      expect(written_key(key)).to eq(pem)
+    end
+
+    it "writes the key verbatim when is_key_content_base64 is absent" do
+      key = api_key.merge(key: pem)
+      expect(written_key(key)).to eq(pem)
+    end
   end
 end
