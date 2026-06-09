@@ -79,10 +79,12 @@ module Spaceship
 
   class UnexpectedResponse < StandardError
     attr_reader :error_info
+    attr_reader :error_body
 
-    def initialize(error_info = nil)
+    def initialize(error_info = nil, error_body = nil)
       super(error_info)
       @error_info = error_info
+      @error_body = error_body
     end
 
     def preferred_error_info
@@ -116,16 +118,40 @@ module Spaceship
 
   # Base class for errors coming from App Store Connect locale changes
   class AppStoreLocaleError < BasicPreferredInfoError
-    def initialize(locale, error)
-      error_message = error.respond_to?(:message) ? error.message : error.to_s
+    def initialize(locale, error, include_locale: true)
+      error_message = app_store_connect_error_message(error)
       locale_str = locale || "unknown"
-      @message = "An exception has occurred for locale: #{locale_str}.\nError: #{error_message}"
+      @message = if include_locale
+                   "An exception has occurred for locale: #{locale_str}.\nError: #{error_message}"
+                 else
+                   error_message
+                 end
       super(@message)
     end
 
     # no need to search github issues since the error is specific
     def show_github_issues
       false
+    end
+
+    private
+
+    def app_store_connect_error_message(error)
+      apple_errors = if error.respond_to?(:error_body) && error.error_body.kind_of?(Hash)
+                       error.error_body["errors"]
+                     end
+
+      if apple_errors.kind_of?(Array) && apple_errors.any?
+        formatted_errors = apple_errors.map do |apple_error|
+          title = apple_error["title"]
+          detail = apple_error["detail"]
+          [("Title: #{title}" if title), ("Detail: #{detail}" if detail)].compact.join("\n")
+        end.reject(&:empty?)
+
+        return formatted_errors.join("\n") unless formatted_errors.empty?
+      end
+
+      error.respond_to?(:message) ? error.message : error.to_s
     end
   end
 

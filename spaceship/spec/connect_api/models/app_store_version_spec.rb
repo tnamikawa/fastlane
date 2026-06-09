@@ -39,14 +39,27 @@ describe Spaceship::ConnectAPI::AppStoreVersion do
     describe "#create_app_store_version_localization" do
       let(:app_store_version) { Spaceship::ConnectAPI::AppStoreVersion.new('id', {}) }
 
-      it "raises localization errors with the requested locale" do
+      it "raises localization errors with the App Store Connect title and detail" do
+        error_body = {
+          "errors" => [
+            {
+              "title" => "The provided entity includes an attribute with an invalid value",
+              "detail" => "The app name is already in use."
+            }
+          ]
+        }
+
         expect(Spaceship::ConnectAPI).to receive(:post_app_store_version_localization)
           .with(app_store_version_id: 'id', attributes: { locale: 'ja-JP' })
-          .and_raise(Spaceship::UnexpectedResponse.new("Cannot add localization due to app name."))
+          .and_raise(Spaceship::UnexpectedResponse.new("Cannot add localization due to app name.", error_body))
 
         expect do
           app_store_version.create_app_store_version_localization(attributes: { locale: 'ja-JP' })
-        end.to raise_error(Spaceship::AppStoreLocalizationError, /locale: ja-JP/)
+        end.to raise_error(Spaceship::AppStoreLocalizationError) { |error|
+          expect(error.message).to include("Title: The provided entity includes an attribute with an invalid value")
+          expect(error.message).to include("Detail: The app name is already in use.")
+          expect(error.message).not_to include("locale: ja-JP")
+        }
       end
     end
   end

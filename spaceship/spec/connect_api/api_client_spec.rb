@@ -138,6 +138,25 @@ describe Spaceship::ConnectAPI::APIClient do
       end.to raise_error(Spaceship::AccessForbiddenError)
     end
 
+    it 'raises UnexpectedResponse with the raw App Store Connect error body' do
+      body_hash = {
+        "errors" => [
+          {
+            "title" => "Some title",
+            "detail" => "some detail"
+          }
+        ]
+      }
+      stub_client_request(client.hostname, 409, JSON.generate(body_hash))
+
+      expect do
+        client.get('')
+      end.to raise_error(Spaceship::UnexpectedResponse) { |error|
+        expect(error.message).to include("Some title - some detail")
+        expect(error.error_body).to eq(body_hash)
+      }
+    end
+
     describe 'with_retry' do
       it 'sleeps on 429' do
         stub_request(:get, client.hostname).
