@@ -373,6 +373,10 @@ module FastlaneCore
       ].compact.join(' ')
     end
 
+    def file_upload_option(source)
+      "-f #{source.shellescape}"
+    end
+
     def additional_upload_parameters
       env_deliver_additional_params = ENV["DELIVER_ALTOOL_ADDITIONAL_UPLOAD_PARAMETERS"]
       return nil if env_deliver_additional_params.to_s.strip.empty?
