@@ -1,4 +1,6 @@
 require 'credentials_manager/appfile_config'
+require 'net/http'
+require 'uri'
 
 module Fastlane
   module Actions
@@ -14,6 +16,7 @@ module Fastlane
         service = client.client
         package_name = params[:package_name]
         product_ids = products_to_upload(metadata_path: metadata_path, product_ids: params[:product_ids])
+        root_url = params[:root_url] || 'https://androidpublisher.googleapis.com/'
 
         UI.message("Uploading Google Play in-app product localizations for #{product_ids.count} product(s)")
 
@@ -22,30 +25,123 @@ module Fastlane
           product_dir = File.join(metadata_path, product_id)
           UI.user_error!("Metadata directory not found for product '#{product_id}': #{product_dir}") unless File.directory?(product_dir)
 
-          product = call_google_api do
-            service.get_inappproduct(package_name, product_id)
-          end
-
           localizations = localizations_from_directory(product_dir)
           UI.user_error!("No localization metadata found for product '#{product_id}'") if localizations.empty?
 
-          product.listings ||= {}
-          localizations.each do |locale, values|
-            listing = product.listings[locale] || AndroidPublisher::InAppProductListing.new
-            listing.title = values.fetch(:title)
-            listing.description = values.fetch(:description)
-            product.listings[locale] = listing
-          end
-
           UI.message("Updating product '#{product_id}' with #{localizations.count} localization(s)")
-          call_google_api do
-            service.patch_inappproduct(package_name, product_id, product)
-          end
+          update_product_localizations(service: service, package_name: package_name, product_id: product_id, localizations: localizations, root_url: root_url)
           updated_count += localizations.count
         end
 
         UI.success("Updated #{updated_count} Google Play in-app product localization(s)")
         updated_count
+      end
+
+      def self.update_product_localizations(service:, package_name:, product_id:, localizations:, root_url:)
+        updated_as_one_time_product = update_one_time_product_localizations(
+          service: service,
+          package_name: package_name,
+          product_id: product_id,
+          localizations: localizations,
+          root_url: root_url
+        )
+        return if updated_as_one_time_product
+
+        product = call_google_api do
+          service.get_inappproduct(package_name, product_id)
+        end
+
+        legacy_product = AndroidPublisher::InAppProduct.new(
+          package_name: package_name,
+          sku: product_id,
+          listings: product.listings || {}
+        )
+        localizations.each do |locale, values|
+          listing = legacy_product.listings[locale] || AndroidPublisher::InAppProductListing.new
+          listing.title = values.fetch(:title)
+          listing.description = values.fetch(:description)
+          legacy_product.listings[locale] = listing
+        end
+
+        call_google_api do
+          service.patch_inappproduct(package_name, product_id, legacy_product)
+        end
+      end
+
+      def self.update_one_time_product_localizations(service:, package_name:, product_id:, localizations:, root_url:)
+        current = get_one_time_product(service: service, package_name: package_name, product_id: product_id, root_url: root_url)
+        return false unless current
+
+        regions_version = current.dig('regionsVersion', 'version')
+        UI.user_error!("Google Play one-time product '#{product_id}' has no regionsVersion") if regions_version.to_s.empty?
+
+        listings_by_locale = Array(current['listings']).each_with_object({}) do |listing, result|
+          result[listing.fetch('languageCode')] = listing
+        end
+
+        localizations.each do |locale, values|
+          listings_by_locale[locale] = {
+            'languageCode' => locale,
+            'title' => values.fetch(:title),
+            'description' => values.fetch(:description)
+          }
+        end
+
+        body = {
+          'packageName' => package_name,
+          'productId' => product_id,
+          'listings' => listings_by_locale.keys.sort.map { |locale| listings_by_locale.fetch(locale) }
+        }
+
+        uri = google_play_api_uri(root_url, "androidpublisher/v3/applications/#{package_name}/onetimeproducts/#{product_id}")
+        uri.query = URI.encode_www_form(
+          'updateMask' => 'listings',
+          'regionsVersion.version' => regions_version
+        )
+
+        request = Net::HTTP::Patch.new(uri)
+        request['Content-Type'] = 'application/json'
+        request.body = JSON.dump(body)
+
+        response = authenticated_request(service, uri, request)
+        handle_http_error!(response)
+        true
+      end
+
+      def self.get_one_time_product(service:, package_name:, product_id:, root_url:)
+        uri = google_play_api_uri(root_url, "androidpublisher/v3/applications/#{package_name}/oneTimeProducts/#{product_id}")
+        response = authenticated_request(service, uri, Net::HTTP::Get.new(uri))
+        return nil if response.code.to_i == 404
+
+        handle_http_error!(response)
+        JSON.parse(response.body)
+      end
+
+      def self.google_play_api_uri(root_url, path)
+        base = root_url.end_with?('/') ? root_url : "#{root_url}/"
+        URI.join(base, path)
+      end
+
+      def self.authenticated_request(service, uri, request)
+        headers = {}
+        service.authorization.apply!(headers)
+        headers.each { |key, value| request[key] = value }
+        Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
+          http.request(request)
+        end
+      end
+
+      def self.handle_http_error!(response)
+        return if response.code.to_i.between?(200, 299)
+
+        body = begin
+                 JSON.parse(response.body)
+               rescue
+                 nil
+               end
+        message = body && body["error"] && body["error"]["message"]
+        message ||= response.body
+        UI.user_error!("Google Api Error: HTTP #{response.code} - #{message}")
       end
 
       def self.products_to_upload(metadata_path:, product_ids:)
@@ -66,9 +162,14 @@ module Fastlane
           validate_text_file!(title_path, product_dir: product_dir, locale: locale, field: 'title')
           validate_text_file!(description_path, product_dir: product_dir, locale: locale, field: 'description')
 
+          title = File.read(title_path, encoding: 'UTF-8').strip
+          description = File.read(description_path, encoding: 'UTF-8').strip
+          validate_text_length!(title, product_dir: product_dir, locale: locale, field: 'title', max_length: 55)
+          validate_text_length!(description, product_dir: product_dir, locale: locale, field: 'description', max_length: 200)
+
           result[locale] = {
-            title: File.read(title_path, encoding: 'UTF-8').strip,
-            description: File.read(description_path, encoding: 'UTF-8').strip
+            title: title,
+            description: description
           }
         end
       end
@@ -76,6 +177,12 @@ module Fastlane
       def self.validate_text_file!(path, product_dir:, locale:, field:)
         UI.user_error!("Missing #{field}.txt for #{File.basename(product_dir)}/#{locale}") unless File.file?(path)
         UI.user_error!("Empty #{field}.txt for #{File.basename(product_dir)}/#{locale}") if File.read(path, encoding: 'UTF-8').strip.empty?
+      end
+
+      def self.validate_text_length!(value, product_dir:, locale:, field:, max_length:)
+        return if value.length <= max_length
+
+        UI.user_error!("#{field}.txt for #{File.basename(product_dir)}/#{locale} is #{value.length} characters, but Google Play allows at most #{max_length}")
       end
 
       def self.call_google_api
