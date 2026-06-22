@@ -742,6 +742,11 @@ module Spaceship
           tunes_request_client.patch("#{Version::V1}/appInfoLocalizations/#{app_info_localization_id}", body)
         end
 
+        def delete_app_info_localization(app_info_localization_id: nil)
+          params = tunes_request_client.build_params(filter: nil, includes: nil, limit: nil, sort: nil)
+          tunes_request_client.delete("#{Version::V1}/appInfoLocalizations/#{app_info_localization_id}", params)
+        end
+
         #
         # appStoreReviewDetails
         #

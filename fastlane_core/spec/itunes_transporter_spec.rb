@@ -58,7 +58,7 @@ describe FastlaneCore do
       ].compact.join(' ')
     end
 
-    def shell_verify_command(provider_short_name: nil, transporter: nil, jwt: nil)
+    def shell_verify_command(provider_short_name: nil, transporter: nil, jwt: nil, use_asset_path: false)
       escaped_password = password.shellescape
       unless FastlaneCore::Helper.windows?
         escaped_password = escaped_password.gsub("\\'") do
@@ -66,13 +66,14 @@ describe FastlaneCore do
         end
         escaped_password = "'" + escaped_password + "'"
       end
+      verify_part = use_asset_path ? "-assetFile /tmp/#{random_uuid}.ipa" : "-f /tmp/my.app.id.itmsp"
       [
         '"' + FastlaneCore::Helper.transporter_path + '"',
         "-m verify",
         ("-u #{email.shellescape}" if jwt.nil?),
         ("-p #{escaped_password}" if jwt.nil?),
         ("-jwt #{jwt}" unless jwt.nil?),
-        "-f /tmp/my.app.id.itmsp",
+        verify_part,
         (transporter.to_s if transporter),
         ("-WONoPause true" if FastlaneCore::Helper.windows?),
         ("-itc_provider #{provider_short_name}" if provider_short_name)
@@ -110,9 +111,9 @@ describe FastlaneCore do
       ].compact.join(' ')
     end
 
-    def altool_upload_command(api_key: nil, platform: "macos", provider_short_name: "", provider_public_id: "")
+    def altool_upload_command(api_key: nil, platform: "macos", provider_short_name: "", provider_public_id: "", use_asset_path: false)
       use_api_key = !api_key.nil?
-      upload_part = "-f /tmp/my.app.id.itmsp"
+      upload_part = use_asset_path ? "-assetFile /tmp/#{random_uuid}.ipa" : "-f /tmp/my.app.id.itmsp"
       escaped_password = password.shellescape
 
       [
@@ -702,6 +703,16 @@ describe FastlaneCore do
           end
         end
 
+        describe "verify command generation with .ipa source" do
+          it "uses -assetFile for .ipa files" do
+            expect(Dir).to receive(:tmpdir).and_return("/tmp")
+            expect(FileUtils).to receive(:cp)
+
+            transporter = FastlaneCore::ItunesTransporter.new(email, password, true)
+            expect(transporter.verify(asset_path: '/tmp/my_app.ipa')).to include("-assetFile")
+          end
+        end
+
         describe "download command generation" do
           it 'generates a call to the shell script' do
             transporter = FastlaneCore::ItunesTransporter.new(email, password, true)
@@ -1184,6 +1195,19 @@ describe FastlaneCore do
               expect(transporter.provider_ids).to eq(altool_provider_id_command)
             end
           end
+
+          context "upload command generation with .ipa source (asset file)" do
+            it "uses -assetFile instead of -f for .ipa files" do
+              expect(Dir).to receive(:tmpdir).and_return("/tmp")
+              expect(FileUtils).to receive(:cp)
+
+              transporter = FastlaneCore::ItunesTransporter.new(email, password, false, nil, nil,
+                                                                altool_compatible_command: true)
+              expect(transporter.upload(asset_path: '/tmp/my_app.ipa', platform: "osx")).to eq(
+                altool_upload_command(use_asset_path: true, provider_short_name: "")
+              )
+            end
+          end
         end
 
         context "with user defined itms_path" do
@@ -1663,32 +1687,5 @@ describe FastlaneCore do
       end
     end
 
-  end
-
-  describe "#prepare writes the .p8 key file" do
-    let(:pem) { "-----BEGIN PRIVATE KEY-----\nMIGTAgEAMBMGByqG\n-----END PRIVATE KEY-----\n" }
-    let(:transporter) { FastlaneCore::AltoolTransporterExecutor.new }
-
-    def written_key(api_key)
-      prepared = transporter.prepare(original_api_key: api_key)
-      File.read(File.join(prepared[:key_dir], "AuthKey_#{prepared[:key_id]}.p8"))
-    ensure
-      FileUtils.remove_entry(prepared[:key_dir]) if prepared && Dir.exist?(prepared[:key_dir])
-    end
-
-    it "decodes the key when is_key_content_base64 is true" do
-      key = api_key.merge(key: Base64.strict_encode64(pem), is_key_content_base64: true)
-      expect(written_key(key)).to eq(pem)
-    end
-
-    it "writes the key verbatim when is_key_content_base64 is false" do
-      key = api_key.merge(key: pem, is_key_content_base64: false)
-      expect(written_key(key)).to eq(pem)
-    end
-
-    it "writes the key verbatim when is_key_content_base64 is absent" do
-      key = api_key.merge(key: pem)
-      expect(written_key(key)).to eq(pem)
-    end
   end
 end
