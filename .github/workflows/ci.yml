@@ -70,18 +70,18 @@ jobs:
           # take min(cores, 8), which is three on the macOS runners, and each
           # worker spends much of its time waiting on an xcodebuild child rather
           # than holding a core. See fastlane#30189.
-          WORKERS: '4'
+          FASTLANE_SPEC_WORKERS: '4'
         shell: bash
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           bundle exec fastlane execute_tests
 
-      # A worker's rspec output goes to its own log, not to stdout, so without
-      # this a failing job says which examples failed and never why.
+      # A worker's rspec output goes to its own log, not to stdout. Uploaded on
+      # every run because `failure()` does not fire on a cancelled job.
       - name: Keep the worker logs
-        if: failure()
-        uses: actions/upload-artifact@v4
+        if: always()
+        uses: actions/upload-artifact@v7
         with:
           name: rspec-worker-logs-${{ matrix.os }}-ruby${{ matrix.ruby }}-xcode${{ matrix.xcode }}
           path: |

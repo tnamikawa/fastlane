@@ -8,33 +8,33 @@ Gem::Specification.new do |spec|
   spec.name          = "fastlane"
   spec.version       = Fastlane::VERSION
   # list of authors is regenerated and resorted on each release
-  spec.authors       = ["Łukasz Grabowski",
-                        "Maksym Grebenets",
-                        "Jérôme Lacoste",
-                        "Stefan Natchev",
-                        "Roger Oba",
-                        "Aaron Brager",
-                        "Luka Mirosevic",
-                        "Joshua Liebowitz",
-                        "Manu Wallner",
-                        "Olivier Halligon",
-                        "Felix Krause",
-                        "Daniel Jankowski",
-                        "Jorge Revuelta H",
-                        "Satoshi Namai",
-                        "Kohki Miki",
-                        "Fumiya Nakamura",
-                        "Max Ott",
-                        "Connor Tumbleson",
-                        "Danielle Tomlinson",
-                        "Iulian Onofrei",
-                        "Jimmy Dee",
-                        "Jan Piotrowski",
-                        "Manish Rathi",
+  spec.authors       = ["Helmut Januschka",
                         "Josh Holtz",
+                        "Danielle Tomlinson",
+                        "Max Ott",
+                        "Stefan Natchev",
+                        "Fumiya Nakamura",
+                        "Luka Mirosevic",
+                        "Iulian Onofrei",
+                        "Joshua Liebowitz",
                         "Andrew McBurney",
-                        "Helmut Januschka",
-                        "Matthew Ellis"]
+                        "Olivier Halligon",
+                        "Daniel Jankowski",
+                        "Felix Krause",
+                        "Matthew Ellis",
+                        "Jérôme Lacoste",
+                        "Manish Rathi",
+                        "Roger Oba",
+                        "Satoshi Namai",
+                        "Łukasz Grabowski",
+                        "Manu Wallner",
+                        "Kohki Miki",
+                        "Aaron Brager",
+                        "Jimmy Dee",
+                        "Maksym Grebenets",
+                        "Jorge Revuelta H",
+                        "Jan Piotrowski",
+                        "Connor Tumbleson"]
 
   spec.email         = ["fastlane@krausefx.com"]
   spec.summary       = Fastlane::SUMMARY
@@ -75,7 +75,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency('fastimage', '>= 2.1.0', '< 3.0.0') # fetch the image sizes from the screenshots
   spec.add_dependency('fastlane-sirp', '>= 1.1.0') # used for sirp login
   spec.add_dependency('gh_inspector', '>= 1.1.2', '< 2.0.0') # search for issues on GitHub when something goes wrong
-  spec.add_dependency('google-apis-androidpublisher_v3', '~> 0.99.0') # Google API Client to access Play Publishing API
+  spec.add_dependency('google-apis-androidpublisher_v3', '~> 0.99') # Google API Client to access Play Publishing API
   spec.add_dependency('google-apis-playcustomapp_v1', '~> 0.1') # Google API Client to access Custom app Publishing API
   spec.add_dependency('google-cloud-env', '>= 1.6.0', '< 2.4.0') # Must be < 2.4.0 to support Ruby 3.1
   spec.add_dependency('google-cloud-storage', '~> 1.31') # Access Google Cloud Storage for match
@@ -89,7 +89,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency('optparse', '>= 0.1.1', '< 1.0.0') # Used to parse options with Commander
   spec.add_dependency('plist', '>= 3.1.0', '< 4.0.0') # Needed for set_build_number_repository and get_info_plist_value actions
   spec.add_dependency('rubyzip', '>= 3.4.0', '< 4.0.0') # fix swift/ipa in gym
-  spec.add_dependency('security', '= 0.2.0') # macOS Keychain manager
+  spec.add_dependency('security', '~> 0.3') # macOS Keychain manager
   spec.add_dependency('simctl', '~> 1.6.3') # Used for querying and interacting with iOS simulators
   spec.add_dependency('terminal-notifier', '>= 2.0.0', '< 3.0.0') # macOS notifications
   spec.add_dependency('terminal-table', '~> 4') # Actions documentation
@@ -108,6 +108,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency('nkf', '~> 0.2') # 3.4 - workaround for CFPropertyList as can't upgrade to 4.x yet
   spec.add_dependency('irb', '>= 1.8') # 4.0 - stdlib gem removed from default set; used by `fastlane console`
   spec.add_dependency('logger', '>= 1.6', '< 2.0') # 4.0 - stdlib gem removed from default set
+  spec.add_dependency('cgi', '~> 0.4') # 4.0 - stdlib gem removed from default set
   spec.add_dependency('benchmark', '>= 0.1.0') # 4.1 - stdlib gem removed from default set
   spec.add_dependency('ostruct', '>= 0.1.0') # 4.1 - stdlib gem removed from default set
 end
