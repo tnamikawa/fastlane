@@ -33,39 +33,10 @@ task(:test_all_individually) do
 end
 
 task(:generate_team_table) do
-  require 'json'
-  content = ["<table id='team'>"]
-
-  contributors = JSON.parse(File.read("team.json"))
-  counter = 0
-  number_of_rows = 5
-
-  contributors.keys.shuffle.each do |github_user|
-    user_content = contributors[github_user]
-    github_user_name = user_content['name']
-    github_user_id = github_user_name.downcase.gsub(' ', '-')
-    github_profile_url = "https://github.com/#{github_user}"
-
-    content << "<tr>" if counter % number_of_rows == 0
-    content << "<td id='#{github_user_id}'>"
-    content << "<a href='#{github_profile_url}'>"
-    content << "<img src='#{github_profile_url}.png' width='140px;'>"
-    content << "</a>"
-    if user_content['twitter']
-      content << "<h4 align='center'><a href='https://twitter.com/#{user_content['twitter']}'>#{github_user_name}</a></h4>"
-    else
-      content << "<h4 align='center'>#{github_user_name}</h4>"
-    end
-
-    content << "</td>"
-    content << "</tr>" if counter % number_of_rows == number_of_rows - 1
-
-    counter += 1
-  end
-  content << "</table>"
+  require_relative 'fastlane/lib/fastlane/documentation/markdown_docs_generator'
 
   readme = File.read("README.md")
-  readme.gsub!(%r{\<table id='team'\>.*\<\/table\>}m, content.join("\n"))
+  readme.sub!(/(?<=<!-- team:start -->\n).*(?=<!-- team:end -->)/m) { Fastlane::MarkdownDocsGenerator.render_team("team.json") }
   File.write("README.md", readme)
   puts("All done")
 end
