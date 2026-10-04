@@ -122,7 +122,7 @@ describe Fastlane do
 
           context 'optional params' do
             let(:response_body) { File.read("./fastlane/spec/fixtures/requests/github_upload_release_asset_response.json") }
-            let(:headers) do
+            let(:upload_headers) do
               {
                 'Authorization' => 'Basic MTIzNDU2Nzg5',
                 'Host' => 'uploads.github.com',
@@ -133,7 +133,7 @@ describe Fastlane do
             before do
               stub_request(:post, "https://uploads.github.com/repos/fastlane/fastlane/releases/1/assets?name=TEST_FILE.md").
                 with(body: "test raw content of file",
-                   headers: headers).
+                   headers: upload_headers).
                 to_return(status: 200, body: response_body, headers: {})
             end
 
@@ -157,7 +157,7 @@ describe Fastlane do
             end
 
             context 'overridable headers' do
-              let(:headers) do
+              let(:upload_headers) do
                 {
                   'Authorization' => 'custom',
                   'Host' => 'uploads.github.com',
@@ -272,8 +272,16 @@ describe Fastlane do
             end
 
             context 'secure is set' do
-              it 'correctly submits without ssl verification' do
+              # Restores the default in case a change to the action alters it again.
+              around do |example|
+                example.run
+              ensure
                 Excon.defaults[:ssl_verify_peer] = true
+              end
+
+              it 'submits without ssl verification, leaving the Excon default alone' do
+                expect(Excon).to receive(:new).with(anything, hash_including(ssl_verify_peer: false)).and_call_original
+
                 result = Fastlane::FastFile.new.parse("
                   lane :test do
                     github_api(
@@ -285,14 +293,14 @@ describe Fastlane do
                   end
                 ").runner.execute(:test)
 
-                expect(Excon.defaults[:ssl_verify_peer]).to eq(false)
                 expect(result[:status]).to eq(200)
-                expect(result[:body]).to eq(response_body)
                 expect(result[:json]).to eq(JSON.parse(response_body))
+                expect(Excon.defaults[:ssl_verify_peer]).to eq(true)
               end
 
-              it 'correctly submits with ssl verification' do
-                Excon.defaults[:ssl_verify_peer] = false
+              it 'submits with ssl verification' do
+                expect(Excon).to receive(:new).with(anything, hash_including(ssl_verify_peer: true)).and_call_original
+
                 result = Fastlane::FastFile.new.parse("
                   lane :test do
                     github_api(
@@ -304,14 +312,14 @@ describe Fastlane do
                   end
                 ").runner.execute(:test)
 
-                expect(Excon.defaults[:ssl_verify_peer]).to eq(true)
                 expect(result[:status]).to eq(200)
-                expect(result[:body]).to eq(response_body)
                 expect(result[:json]).to eq(JSON.parse(response_body))
+                expect(Excon.defaults[:ssl_verify_peer]).to eq(true)
               end
 
-              it 'correctly submits using default verification' do
-                Excon.defaults[:ssl_verify_peer] = false
+              it 'verifies ssl by default' do
+                expect(Excon).to receive(:new).with(anything, hash_including(ssl_verify_peer: true)).and_call_original
+
                 result = Fastlane::FastFile.new.parse("
                   lane :test do
                     github_api(
@@ -322,10 +330,9 @@ describe Fastlane do
                   end
                 ").runner.execute(:test)
 
-                expect(Excon.defaults[:ssl_verify_peer]).to eq(true)
                 expect(result[:status]).to eq(200)
-                expect(result[:body]).to eq(response_body)
                 expect(result[:json]).to eq(JSON.parse(response_body))
+                expect(Excon.defaults[:ssl_verify_peer]).to eq(true)
               end
             end
           end

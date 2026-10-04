@@ -2,11 +2,18 @@
 module SpecHelper
 end
 
-require "coveralls"
-Coveralls.wear! unless ENV["FASTLANE_SKIP_UPDATE_CHECK"]
+unless ENV["FASTLANE_SKIP_UPDATE_CHECK"]
+  require "simplecov"
+  # rake test_parallel names each worker: SimpleCov merges results by name, so with one name they overwrite each other
+  SimpleCov.command_name("rspec-worker-#{ENV['FASTLANE_SPEC_WORKER']}") if ENV["FASTLANE_SPEC_WORKER"]
+  SimpleCov.start do
+    add_filter("vendor")
+    add_filter("/spec/")
+  end
+end
 
 require "webmock/rspec"
-WebMock.disable_net_connect!(allow: 'coveralls.io')
+WebMock.disable_net_connect!
 
 require "fastlane"
 require "tmpdir"
@@ -219,6 +226,45 @@ RSpec.configure do |config|
         end
       end
       warn("[env-guard] Full inventory written to #{ENV_GUARD_REPORT_PATH}")
+    end
+  end
+
+  # Stub usage. WebMock fails a request nothing stubs, but never a stub nothing
+  # requests, so dead stubs pile up in shared helpers: the login helper stubbed a
+  # file spaceship stopped downloading in 2017. FASTLANE_SPEC_STUB_USAGE names a
+  # file to write each stub's request count and registration site to. rake
+  # test_parallel sets it per worker and merges them: a stub unused in one worker
+  # may be requested in another.
+  STUB_USAGE_PATH = ENV["FASTLANE_SPEC_STUB_USAGE"]
+  if STUB_USAGE_PATH
+    stub_usage = Hash.new { |hash, key| hash[key] = { "requests" => 0, "registered_at" => [] } }
+    stub_origin = {}.compare_by_identity
+
+    WebMock::API.prepend(Module.new do
+      define_method(:stub_request) do |*args|
+        super(*args).tap do |stub|
+          # Skip the stub_request wrappers some spec helpers define
+          frame = caller_locations.find do |location|
+            !location.label.to_s.include?("stub_request") && location.path.include?("/spec/") && !location.path.include?("/vendor/")
+          end
+          stub_origin[stub] = "#{frame.path.delete_prefix("#{Dir.pwd}/")}:#{frame.lineno}" if frame
+        end
+      end
+    end)
+
+    # Runs inside webmock/rspec's around hook, so before WebMock.reset! clears the stubs
+    config.after(:each) do
+      WebMock::StubRegistry.instance.request_stubs.each do |stub|
+        # Ruby 3.4 prints hashes as {"a" => 1} rather than {"a"=>1}: one form, so reports from different Rubies compare
+        usage = stub_usage[stub.request_pattern.to_s.gsub(" => ", "=>")]
+        usage["requests"] += WebMock::RequestRegistry.instance.times_executed(stub.request_pattern)
+        usage["registered_at"] |= [stub_origin[stub]].compact
+      end
+    end
+
+    config.after(:suite) do
+      require "json"
+      File.write(STUB_USAGE_PATH, JSON.pretty_generate(stub_usage.sort.to_h))
     end
   end
 

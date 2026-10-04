@@ -547,21 +547,19 @@ module Deliver
       if locales_to_enable.count > 0
         lng_text = "language"
         lng_text += "s" if locales_to_enable.count != 1
-        Helper.show_loading_indicator("Activating info #{lng_text} #{locales_to_enable.join(', ')}...")
+        Helper.with_loading_indicator("Activating info #{lng_text} #{locales_to_enable.join(', ')}...") do
+          locales_to_enable.each do |locale|
+            name = localized_app_info_name_for_locale(locale)
+            unless name
+              UI.user_error!("Cannot create app info localization for requested locale '#{locale}' without a localized app name")
+            end
 
-        locales_to_enable.each do |locale|
-          name = localized_app_info_name_for_locale(locale)
-          unless name
-            UI.user_error!("Cannot create app info localization for requested locale '#{locale}' without a localized app name")
+            app_info.create_app_info_localization(attributes: {
+              locale: locale,
+              name: name
+            })
           end
-
-          app_info.create_app_info_localization(attributes: {
-            locale: locale,
-            name: name
-          })
         end
-
-        Helper.hide_loading_indicator
 
         # Refresh version localizations
         localizations = app_info.get_app_info_localizations
@@ -598,15 +596,13 @@ module Deliver
       if locales_to_enable.count > 0
         lng_text = "language"
         lng_text += "s" if locales_to_enable.count != 1
-        Helper.show_loading_indicator("Activating version #{lng_text} #{locales_to_enable.join(', ')}...")
-
-        locales_to_enable.each do |locale|
-          version.create_app_store_version_localization(attributes: {
-            locale: locale
-          })
+        Helper.with_loading_indicator("Activating version #{lng_text} #{locales_to_enable.join(', ')}...") do
+          locales_to_enable.each do |locale|
+            version.create_app_store_version_localization(attributes: {
+              locale: locale
+            })
+          end
         end
-
-        Helper.hide_loading_indicator
 
         # Refresh version localizations
         localizations = version.get_app_store_version_localizations

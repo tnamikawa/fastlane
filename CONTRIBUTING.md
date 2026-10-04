@@ -7,6 +7,7 @@ Before submitting a new GitHub issue, please make sure to
 - Check out [docs.fastlane.tools](https://docs.fastlane.tools)
 - Check out the README pages on [this repo](https://github.com/fastlane/fastlane)
 - Search for [existing GitHub issues](https://github.com/fastlane/fastlane/issues)
+- Check out [SECURITY.md](./SECURITY.md) for reporting a security discovery
 
 If the above doesn't help, please [submit an issue](https://github.com/fastlane/fastlane/issues) on GitHub and provide information about your setup, in particular the output of the `fastlane env` command.
 
@@ -18,6 +19,7 @@ Some people might also use the [_fastlane_ tag on StackOverflow](https://stackov
 
 - To start working on _fastlane_, check out [YourFirstPR.md][firstpr]
 - For some more advanced tooling and debugging tips, check out [ToolsAndDebugging.md](ToolsAndDebugging.md)
+- For the conventions changes are reviewed against, read [Design.md](Design.md)
 
 ### New Actions
 

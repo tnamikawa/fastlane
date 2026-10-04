@@ -86,7 +86,13 @@ jobs:
           path: |
             rspec_worker_*.log
             rspec_worker_*.units
+            unused_stubs.txt
           if-no-files-found: warn
+
+      # One macOS leg is enough. See fastlane#30289.
+      - name: Coverage summary
+        if: matrix.os == 'macos-26' && matrix.xcode == '26.6' && matrix.ruby == '3.4'
+        run: bundle exec rake coverage_summary
 
       - name: RSpec report
         if: always()
