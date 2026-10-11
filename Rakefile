@@ -1,5 +1,9 @@
 require "bundler/gem_tasks"
 
+# The release workflow runs `rake release` (rubygems/release-gem) after the create_github_release lane has already
+# tagged the release. Prevent another tag.
+Rake::Task["release:source_control_push"].clear
+
 Dir.glob("internal/rakelib/*.rake").each { |r| load r }
 
 task(:test_all) do
@@ -36,14 +40,14 @@ task(:generate_team_table) do
   require_relative 'fastlane/lib/fastlane/documentation/markdown_docs_generator'
 
   readme = File.read("README.md")
-  readme.sub!(/(?<=<!-- team:start -->\n).*(?=<!-- team:end -->)/m) { Fastlane::MarkdownDocsGenerator.render_team("team.json") }
+  readme.sub!(/(?<=<!-- team:start -->\n).*(?=<!-- team:end -->)/m) { Fastlane::MarkdownDocsGenerator.render_team("internal/team.json") }
   File.write("README.md", readme)
   puts("All done")
 end
 
 task(:update_gem_spec_authors) do
   require 'json'
-  contributors = JSON.parse(File.read("team.json"))
+  contributors = JSON.parse(File.read("internal/team.json"))
 
   names = contributors.values.collect do |current|
     current["name"]
