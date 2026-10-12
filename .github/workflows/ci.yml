@@ -74,7 +74,15 @@ jobs:
         run: |
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          bundle exec fastlane execute_tests
+          if ! bundle exec fastlane execute_tests; then
+            for log in rspec_worker_*.log; do
+              [ -f "$log" ] || continue
+              grep -E "Failure/Error:|expected:|got:|# .*_spec\.rb:[0-9]+|^Failures:" "$log" | tail -n 40 | while IFS= read -r line; do
+                echo "::error title=RSpec worker failure::$line"
+              done
+            done
+            exit 1
+          fi
 
       # A worker's rspec output goes to its own log, not to stdout. Uploaded on
       # every run because `failure()` does not fire on a cancelled job.
@@ -148,4 +156,6 @@ jobs:
           bundler-cache: true
 
       - name: Lint
-        run: bundle exec fastlane lint_source
+        run: |
+          bundle exec rubocop --format github
+          bundle exec fastlane lint_source
