@@ -75,8 +75,8 @@ module Fastlane
         regions_version = current.dig('regionsVersion', 'version')
         UI.user_error!("Google Play one-time product '#{product_id}' has no regionsVersion") if regions_version.to_s.empty?
 
-        listings_by_locale = Array(current['listings']).each_with_object({}) do |listing, result|
-          result[listing.fetch('languageCode')] = listing
+        listings_by_locale = Array(current['listings']).to_h do |listing|
+          [listing.fetch('languageCode'), listing]
         end
 
         localizations.each do |locale, values|

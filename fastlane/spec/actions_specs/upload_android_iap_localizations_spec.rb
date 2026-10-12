@@ -63,7 +63,7 @@ describe Fastlane do
         stub_request(:patch, "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/#{package_name}/onetimeproducts/reward_and")
           .with(query: { "updateMask" => "listings", "regionsVersion.version" => "2025/03" }) do |request|
             body = JSON.parse(request.body)
-            listings = body.fetch("listings").each_with_object({}) { |listing, result| result[listing.fetch("languageCode")] = listing }
+            listings = body.fetch("listings").to_h { |listing| [listing.fetch("languageCode"), listing] }
             expect(body["packageName"]).to eq(package_name)
             expect(body["productId"]).to eq("reward_and")
             expect(listings["en-US"]["title"]).to eq("Loot Retrieval")

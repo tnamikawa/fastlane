@@ -52,7 +52,7 @@ module Fastlane
 
       def self.upload_localizations_for_iap(iap, iap_dir)
         existing = iap.get_localizations
-        existing_by_locale = existing.each_with_object({}) { |loc, h| h[loc.locale] = loc }
+        existing_by_locale = existing.to_h { |loc| [loc.locale, loc] }
 
         locale_dirs = Dir.glob(File.join(iap_dir, '*')).select { |d| File.directory?(d) }
         count = 0

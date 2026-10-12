@@ -100,8 +100,8 @@ module Spaceship
         return Spaceship::ConnectAPI::AppScreenshotSet.all(client: client, app_store_version_localization_id: id, filter: filter, includes: includes, limit: limit, sort: sort)
       rescue => error
         # エラーの詳細をログに出力
-        puts "Error getting screenshot sets for locale #{@locale}: #{error.message}"
-        puts error.backtrace.first(5).join("\n") if error.backtrace
+        puts("Error getting screenshot sets for locale #{@locale}: #{error.message}")
+        puts(error.backtrace.first(5).join("\n")) if error.backtrace
         raise Spaceship::AppStoreScreenshotError.new(@locale, error)
       end
 
@@ -111,8 +111,8 @@ module Spaceship
         return resp.to_models.first
       rescue => error
         # エラーの詳細をログに出力
-        puts "Error creating screenshot set for locale #{@locale}: #{error.message}"
-        puts error.backtrace.first(5).join("\n") if error.backtrace
+        puts("Error creating screenshot set for locale #{@locale}: #{error.message}")
+        puts(error.backtrace.first(5).join("\n")) if error.backtrace
         raise Spaceship::AppStoreScreenshotError.new(@locale, error)
       end
     end
