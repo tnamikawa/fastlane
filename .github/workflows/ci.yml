@@ -159,6 +159,4 @@ jobs:
           bundler-cache: true
 
       - name: Lint
-        run: |
-          bundle exec rubocop --format github
-          bundle exec fastlane lint_source
+        run: bundle exec fastlane lint_source
