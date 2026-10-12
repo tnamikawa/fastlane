@@ -17,6 +17,7 @@ module Fastlane
         package_name = params[:package_name]
         product_ids = products_to_upload(metadata_path: metadata_path, product_ids: params[:product_ids])
         root_url = params[:root_url] || 'https://androidpublisher.googleapis.com/'
+        timeout = params[:timeout]
 
         UI.message("Uploading Google Play in-app product localizations for #{product_ids.count} product(s)")
 
@@ -29,7 +30,7 @@ module Fastlane
           UI.user_error!("No localization metadata found for product '#{product_id}'") if localizations.empty?
 
           UI.message("Updating product '#{product_id}' with #{localizations.count} localization(s)")
-          update_product_localizations(service: service, package_name: package_name, product_id: product_id, localizations: localizations, root_url: root_url)
+          update_product_localizations(service: service, package_name: package_name, product_id: product_id, localizations: localizations, root_url: root_url, timeout: timeout)
           updated_count += localizations.count
         end
 
@@ -37,13 +38,14 @@ module Fastlane
         updated_count
       end
 
-      def self.update_product_localizations(service:, package_name:, product_id:, localizations:, root_url:)
+      def self.update_product_localizations(service:, package_name:, product_id:, localizations:, root_url:, timeout: 300)
         updated_as_one_time_product = update_one_time_product_localizations(
           service: service,
           package_name: package_name,
           product_id: product_id,
           localizations: localizations,
-          root_url: root_url
+          root_url: root_url,
+          timeout: timeout
         )
         return if updated_as_one_time_product
 
@@ -68,8 +70,8 @@ module Fastlane
         end
       end
 
-      def self.update_one_time_product_localizations(service:, package_name:, product_id:, localizations:, root_url:)
-        current = get_one_time_product(service: service, package_name: package_name, product_id: product_id, root_url: root_url)
+      def self.update_one_time_product_localizations(service:, package_name:, product_id:, localizations:, root_url:, timeout: 300)
+        current = get_one_time_product(service: service, package_name: package_name, product_id: product_id, root_url: root_url, timeout: timeout)
         return false unless current
 
         regions_version = current.dig('regionsVersion', 'version')
@@ -103,14 +105,14 @@ module Fastlane
         request['Content-Type'] = 'application/json'
         request.body = JSON.dump(body)
 
-        response = authenticated_request(service, uri, request)
+        response = authenticated_request(service, uri, request, timeout: timeout)
         handle_http_error!(response)
         true
       end
 
-      def self.get_one_time_product(service:, package_name:, product_id:, root_url:)
+      def self.get_one_time_product(service:, package_name:, product_id:, root_url:, timeout: 300)
         uri = google_play_api_uri(root_url, "androidpublisher/v3/applications/#{package_name}/oneTimeProducts/#{product_id}")
-        response = authenticated_request(service, uri, Net::HTTP::Get.new(uri))
+        response = authenticated_request(service, uri, Net::HTTP::Get.new(uri), timeout: timeout)
         return nil if response.code.to_i == 404
 
         handle_http_error!(response)
@@ -122,11 +124,14 @@ module Fastlane
         URI.join(base, path)
       end
 
-      def self.authenticated_request(service, uri, request)
+      def self.authenticated_request(service, uri, request, timeout: 300)
         headers = {}
         service.authorization.apply!(headers)
         headers.each { |key, value| request[key] = value }
         Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
+          http.open_timeout = timeout
+          http.read_timeout = timeout
+          http.write_timeout = timeout
           http.request(request)
         end
       end
