@@ -1,4 +1,5 @@
 require_relative '../model'
+require_relative '../../errors'
 module Spaceship
   class ConnectAPI
     class AppInfo
