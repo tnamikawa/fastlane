@@ -2,6 +2,7 @@ require 'logger'
 require 'colored'
 require 'tty-spinner'
 require 'pathname'
+require 'fileutils'
 
 require_relative 'command_executor'
 require_relative 'fastlane_folder'
@@ -263,6 +264,9 @@ module FastlaneCore
           result = File.expand_path(File.join(self.xcode_path, path))
           return result if File.exist?(result)
         end
+        if FastlaneCore::Env.truthy?("FASTLANE_ITUNES_TRANSPORTER_USE_SHELL_SCRIPT")
+          UI.user_error!("Could not find transporter at #{self.xcode_path}: Xcode 14 and newer no longer include it. Remove FASTLANE_ITUNES_TRANSPORTER_USE_SHELL_SCRIPT so fastlane uploads with altool, or install Transporter and set FASTLANE_ITUNES_TRANSPORTER_PATH.")
+        end
         UI.user_error!("Could not find transporter at #{self.xcode_path}. Please make sure you set the correct path to your Xcode installation.")
       elsif self.windows?
         [
@@ -342,6 +346,21 @@ module FastlaneCore
     # removes ANSI colors from string
     def self.strip_ansi_colors(str)
       str.gsub(/\e\[([;\d]+)?m/, '')
+    end
+
+    # Opens path for writing, readable and writable only by its owner (0600), including when it
+    # already exists: the mode is set before anything is written. Windows has no such mode.
+    def self.open_owner_only(path, mode = "w", &block)
+      File.open(path, mode, 0o600) do |file|
+        file.chmod(0o600) unless windows?
+        yield(file)
+      end
+    end
+
+    # Creates dir and any missing parents accessible only by its owner (0700); an existing dir is restricted too
+    def self.mkdir_owner_only(dir)
+      FileUtils.mkdir_p(dir, mode: 0o700)
+      File.chmod(0o700, dir) unless windows?
     end
 
     # Zips directory

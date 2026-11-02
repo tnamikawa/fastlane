@@ -12,11 +12,30 @@ unless ENV["FASTLANE_SKIP_UPDATE_CHECK"]
   end
 end
 
+# FASTLANE_SPEC_WARNINGS=<dir> records every Ruby warning, deprecations included, one file per process,
+# for `rake warnings_summary`. Recorded here because some specs replace $stderr while they run, and
+# through a file opened now because some run under FakeFS. Messages without a location are not warnings.
+unless ENV["FASTLANE_SPEC_WARNINGS"].to_s.empty?
+  require "fileutils"
+  require "json"
+  Warning[:deprecated] = true
+  FileUtils.mkdir_p(ENV["FASTLANE_SPEC_WARNINGS"])
+  warnings_log = File.open(File.join(ENV["FASTLANE_SPEC_WARNINGS"], "warnings_#{Process.pid}.jsonl"), "a") # rubocop:disable Style/FileOpen -- open for the whole run
+  warnings_log.sync = true
+  Warning.singleton_class.prepend(Module.new do
+    define_method(:warn) do |message, category: nil, **options|
+      warnings_log.write("#{JSON.generate({ category: category, message: message })}\n") if message.include?(": warning: ")
+      super(message, category: category, **options)
+    end
+  end)
+end
+
 require "webmock/rspec"
 WebMock.disable_net_connect!
 
 require "fastlane"
 require "tmpdir"
+require "shellwords"
 UI = FastlaneCore::UI
 
 # Spaceship persists a session cookie to ~/.fastlane/spaceship/<user>/cookie,
@@ -85,6 +104,22 @@ ENV_GUARD_LOAD_TIME = ((env_guard_loaded.keys - env_guard_pristine.keys) |
                          .reject { |key| env_guard_loaded[key] == env_guard_pristine[key] }).sort.freeze
 
 my_main = self
+# `security` subcommands that change the developer's keychains, which a spec must never run for real. See fastlane#30186.
+# cms is one: decoding a profile imports its signing certificate into a keychain.
+KEYCHAIN_CHANGING_SUBCOMMANDS = %w[
+  cms create-keychain delete-keychain unlock-keychain set-keychain-settings import set-key-partition-list
+  add-generic-password delete-generic-password add-internet-password delete-internet-password
+].freeze
+
+def keychain_changing?(command, stdin = nil)
+  # The security gem sends a command that takes a password to `security -i` on stdin.
+  command = ["security", *Shellwords.split(stdin.to_s)] if command == %w[security -i]
+  program, subcommand, *arguments = command
+  return false unless program == "security"
+
+  KEYCHAIN_CHANGING_SUBCOMMANDS.include?(subcommand) || (%w[list-keychains default-keychain].include?(subcommand) && arguments.include?("-s"))
+end
+
 RSpec.configure do |config|
   # Singleton guard, see fastlane#30184.
   #
@@ -275,8 +310,13 @@ RSpec.configure do |config|
 
   config.before(:each) do |current_test|
     # We don't want to call the RubyGems API at any point
-    # This was a request that was added with Ruby 2.4.0
     allow(Fastlane::FastlaneRequire).to receive(:install_gem_if_needed).and_return(nil)
+
+    allow(Security::Command).to receive(:run).and_wrap_original do |run, *command, **options|
+      raise "A spec ran `#{command.join(' ')}`, which changes the developer's keychains: stub the security gem call instead" if keychain_changing?(command, options[:stdin])
+
+      run.call(*command, **options)
+    end
 
     ENV['FASTLANE_PLATFORM_NAME'] = nil
 
