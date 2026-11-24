@@ -97,6 +97,12 @@ module FastlaneCore
       return false
     end
 
+    # @return [boolean] true if a prompt reading stdin can get an answer: off CI with stdin on a terminal, or FASTLANE_ALLOW_PIPED_INPUT set
+    def self.can_prompt?
+      return true if FastlaneCore::Env.truthy?("FASTLANE_ALLOW_PIPED_INPUT")
+      !ci? && $stdin.tty?
+    end
+
     def self.is_circle_ci?
       return ENV.key?('CIRCLECI')
     end
@@ -204,7 +210,7 @@ module FastlaneCore
     def self.swift_version
       if self.which('swift')
         output = `swift --version 2> /dev/null`
-        return output.split("\n").first.match(/version ([0-9.]+)/).captures.first
+        return output.lines.first.to_s[/version ([0-9.]+)/, 1]
       end
       return nil
     end
@@ -255,15 +261,6 @@ module FastlaneCore
         user_local_itms_path = "/usr/local/itms"
         return user_local_itms_path if File.exist?(user_local_itms_path)
 
-        # Then check for iTMSTransporter in the Xcode path
-        [
-          "../Applications/Application Loader.app/Contents/MacOS/itms",
-          "../Applications/Application Loader.app/Contents/itms",
-          "../SharedFrameworks/ContentDeliveryServices.framework/Versions/A/itms" # For Xcode 11
-        ].each do |path|
-          result = File.expand_path(File.join(self.xcode_path, path))
-          return result if File.exist?(result)
-        end
         if FastlaneCore::Env.truthy?("FASTLANE_ITUNES_TRANSPORTER_USE_SHELL_SCRIPT")
           UI.user_error!("Could not find transporter at #{self.xcode_path}: Xcode 14 and newer no longer include it. Remove FASTLANE_ITUNES_TRANSPORTER_USE_SHELL_SCRIPT so fastlane uploads with altool, or install Transporter and set FASTLANE_ITUNES_TRANSPORTER_PATH.")
         end
@@ -381,7 +378,12 @@ module FastlaneCore
       end
 
       UI.command(command) unless print
-      Helper.backticks(command, print: print)
+      FastlaneCore::CommandExecutor.execute(command: command,
+                                          print_all: print,
+                                      print_command: print,
+                                              error: proc do |output|
+                                                UI.user_error!("Could not zip '#{path}' to '#{output_path}':\n#{output}")
+                                              end)
     end
 
     # Executes the provided block after adjusting the ENV to have the
